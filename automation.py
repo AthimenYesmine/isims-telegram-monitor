@@ -11,8 +11,8 @@ urllib3.disable_warnings(
 # TES INFORMATIONS
 # ==============================
 
-TOKEN = "8803831564:AAG7_RXfAlCe2UI8XwvttMjX4COBnUXfzcQ"
-CHAT_ID = "8693020022"
+TOKEN = os.environ["TELEGRAM_TOKEN"]
+CHAT_ID = os.environ["CHAT_ID"]
 
 URL = "https://isimsf.rnu.tn/"
 
