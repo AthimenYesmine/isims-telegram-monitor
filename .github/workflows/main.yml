@@ -31,12 +31,16 @@ jobs:
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
-        run: python isims_monitor.py
+        run: python automation.py
 
       - name: Sauvegarder le nouvel etat
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add last_hash.txt
+
           git diff --cached --quiet || git commit -m "Update ISIMS monitoring state"
+
           git push
+          
