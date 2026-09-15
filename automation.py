@@ -15,8 +15,7 @@ TOKEN = os.environ["TELEGRAM_TOKEN"]
 CHAT_ID = os.environ["CHAT_ID"]
 
 URL = "https://isimsf.rnu.tn/"
-
-FICHIER_HASH = "last_hash.txt"
+HASH_FILE = "last_hash.txt"
 
 
 # ==============================
@@ -24,7 +23,6 @@ FICHIER_HASH = "last_hash.txt"
 # ==============================
 
 def envoyer_telegram(message):
-
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
 
     data = {
@@ -32,11 +30,7 @@ def envoyer_telegram(message):
         "text": message
     }
 
-    requests.post(
-        url,
-        data=data,
-        timeout=20
-    )
+    requests.post(url, data=data)
 
 
 # ==============================
@@ -44,7 +38,6 @@ def envoyer_telegram(message):
 # ==============================
 
 def recuperer_site():
-
     reponse = requests.get(
         URL,
         verify=False,
@@ -57,61 +50,53 @@ def recuperer_site():
 
 
 # ==============================
-# PROGRAMME
+# LIRE L'ANCIEN HASH
+# ==============================
+
+def lire_ancien_hash():
+
+    if os.path.exists(HASH_FILE):
+
+        with open(HASH_FILE, "r") as fichier:
+            return fichier.read().strip()
+
+    return ""
+
+
+# ==============================
+# SAUVEGARDER LE NOUVEAU HASH
+# ==============================
+
+def sauvegarder_hash(nouveau_hash):
+
+    with open(HASH_FILE, "w") as fichier:
+        fichier.write(nouveau_hash)
+
+
+# ==============================
+# PROGRAMME PRINCIPAL
 # ==============================
 
 print("🔎 Vérification du site ISIMS...")
 
 try:
 
-    # Récupérer le contenu du site
-
     contenu = recuperer_site()
 
-    # Calculer une empreinte du site
-
     nouvelle_version = hashlib.md5(
-        contenu.encode("utf-8")
+        contenu.encode()
     ).hexdigest()
 
-    # Vérifier si on possède déjà une ancienne version
+    ancienne_version = lire_ancien_hash()
 
-    if os.path.exists(FICHIER_HASH):
-
-        with open(
-            FICHIER_HASH,
-            "r",
-            encoding="utf-8"
-        ) as fichier:
-
-            ancienne_version = fichier.read().strip()
-
-    else:
-
-        ancienne_version = ""
-
-
-    # ==============================
-    # PREMIERE VERIFICATION
-    # ==============================
-
+    # Première vérification
     if ancienne_version == "":
 
-        with open(
-            FICHIER_HASH,
-            "w",
-            encoding="utf-8"
-        ) as fichier:
+        sauvegarder_hash(nouvelle_version)
 
-            fichier.write(nouvelle_version)
+        print("✅ Première vérification effectuée.")
 
-        print("✅ Première vérification terminée.")
-
-
-    # ==============================
-    # LE SITE A CHANGE
-    # ==============================
-
+    # Le site a changé
     elif nouvelle_version != ancienne_version:
 
         print("🚨 Nouvelle modification détectée !")
@@ -122,28 +107,18 @@ try:
             f"🌐 {URL}"
         )
 
-        # Sauvegarder la nouvelle version
+        sauvegarder_hash(nouvelle_version)
 
-        with open(
-            FICHIER_HASH,
-            "w",
-            encoding="utf-8"
-        ) as fichier:
+        print("✅ Nouveau hash sauvegardé.")
 
-            fichier.write(nouvelle_version)
-
-        print("📱 Notification Telegram envoyée.")
-
-
-    # ==============================
-    # AUCUN CHANGEMENT
-    # ==============================
-
+    # Rien n'a changé
     else:
 
         print("✓ Rien de nouveau.")
 
+        sauvegarder_hash(nouvelle_version)
 
 except Exception as erreur:
 
     print("❌ Erreur :", erreur)
+    raise
