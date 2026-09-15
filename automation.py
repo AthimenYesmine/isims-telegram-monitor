@@ -1,20 +1,22 @@
 import requests
 import hashlib
 import os
-import time
 import urllib3
 
 urllib3.disable_warnings(
     urllib3.exceptions.InsecureRequestWarning
 )
+
 # ==============================
-# TES INFORMATIONS
+# INFORMATIONS
 # ==============================
 
 TOKEN = os.environ["TELEGRAM_TOKEN"]
 CHAT_ID = os.environ["CHAT_ID"]
 
 URL = "https://isimsf.rnu.tn/"
+
+FICHIER_HASH = "last_hash.txt"
 
 
 # ==============================
@@ -30,7 +32,11 @@ def envoyer_telegram(message):
         "text": message
     }
 
-    requests.post(url, data=data)
+    requests.post(
+        url,
+        data=data,
+        timeout=20
+    )
 
 
 # ==============================
@@ -39,7 +45,13 @@ def envoyer_telegram(message):
 
 def recuperer_site():
 
-    reponse = requests.get(URL, verify=False)
+    reponse = requests.get(
+        URL,
+        verify=False,
+        timeout=30
+    )
+
+    reponse.raise_for_status()
 
     return reponse.text
 
@@ -48,45 +60,90 @@ def recuperer_site():
 # PROGRAMME
 # ==============================
 
-ancienne_version = ""
+print("🔎 Vérification du site ISIMS...")
 
-while True:
+try:
 
-    print("🔎 Vérification du site ISIMS...")
+    # Récupérer le contenu du site
 
-    try:
+    contenu = recuperer_site()
 
-        contenu = recuperer_site()
+    # Calculer une empreinte du site
 
-        nouvelle_version = hashlib.md5(
-            contenu.encode()
-        ).hexdigest()
+    nouvelle_version = hashlib.md5(
+        contenu.encode("utf-8")
+    ).hexdigest()
 
-        # Première vérification
-        if ancienne_version == "":
-            ancienne_version = nouvelle_version
-            print("✅ Surveillance commencée.")
+    # Vérifier si on possède déjà une ancienne version
 
-        # Le site a changé
-        elif nouvelle_version != ancienne_version:
+    if os.path.exists(FICHIER_HASH):
 
-            print("🚨 Nouvelle modification détectée !")
+        with open(
+            FICHIER_HASH,
+            "r",
+            encoding="utf-8"
+        ) as fichier:
 
-            envoyer_telegram(
-                "🔔 NOUVEAUTÉ ISIMS !\n\n"
-                "Le site de l'ISIMS vient d'être modifié.\n\n"
-                f"🌐 {URL}"
-            )
+            ancienne_version = fichier.read().strip()
 
-            ancienne_version = nouvelle_version
+    else:
 
-        else:
+        ancienne_version = ""
 
-            print("✓ Rien de nouveau.")
 
-    except Exception as erreur:
+    # ==============================
+    # PREMIERE VERIFICATION
+    # ==============================
 
-        print("❌ Erreur :", erreur)
+    if ancienne_version == "":
 
-    # Vérifier toutes les 30 minutes
-    time.sleep(300)
+        with open(
+            FICHIER_HASH,
+            "w",
+            encoding="utf-8"
+        ) as fichier:
+
+            fichier.write(nouvelle_version)
+
+        print("✅ Première vérification terminée.")
+
+
+    # ==============================
+    # LE SITE A CHANGE
+    # ==============================
+
+    elif nouvelle_version != ancienne_version:
+
+        print("🚨 Nouvelle modification détectée !")
+
+        envoyer_telegram(
+            "🔔 NOUVEAUTÉ ISIMS !\n\n"
+            "Le site de l'ISIMS vient d'être modifié.\n\n"
+            f"🌐 {URL}"
+        )
+
+        # Sauvegarder la nouvelle version
+
+        with open(
+            FICHIER_HASH,
+            "w",
+            encoding="utf-8"
+        ) as fichier:
+
+            fichier.write(nouvelle_version)
+
+        print("📱 Notification Telegram envoyée.")
+
+
+    # ==============================
+    # AUCUN CHANGEMENT
+    # ==============================
+
+    else:
+
+        print("✓ Rien de nouveau.")
+
+
+except Exception as erreur:
+
+    print("❌ Erreur :", erreur)
